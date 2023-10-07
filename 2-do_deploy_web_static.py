@@ -18,21 +18,22 @@ def deploy_archive(archive_path):
     if not os.path.isfile(archive_path):
         return False
 
+    # Extract archive name and folder name
+    file_name = os.path.basename(archive_path)
+    folder_name = os.path.splitext(file_name)[0]
+
+    # Define paths
+    # Moved this line after defining file_name
+    remote_tmp_path = f"/tmp/{file_name}"
+    releases_path = f"/data/web_static/releases/{folder_name}"
+    current_path = "/data/web_static/current"
+
     # Add debug statements to check each step
     print(f"Uploading archive: {archive_path}")
     if put(archive_path, remote_tmp_path).failed:
         print("Failed to upload archive")
         return False
     print("Archive uploaded successfully")
-
-    # Extract archive name and folder name
-    file_name = os.path.basename(archive_path)
-    folder_name = os.path.splitext(file_name)[0]
-
-    # Define paths
-    remote_tmp_path = f"/tmp/{file_name}"
-    releases_path = f"/data/web_static/releases/{folder_name}"
-    current_path = "/data/web_static/current"
 
     # Upload the archive to the remote server
     if put(archive_path, remote_tmp_path).failed:
