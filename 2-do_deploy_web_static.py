@@ -3,7 +3,7 @@
 import os
 from fabric.api import env, put, run
 
-env.hosts = ["54.160.85.72", "35.175.132.106"]
+env.hosts = ["3.85.177.105", "34.224.63.159"]
 
 def file_exists(path):
     """Check if a file exists on the remote server."""
