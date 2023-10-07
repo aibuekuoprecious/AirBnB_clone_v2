@@ -15,54 +15,62 @@ def file_exists(path):
 
 def deploy_archive(archive_path):
     """Distribute an archive to a web server."""
-    if not os.path.isfile(archive_path):
+    try:
+        if not os.path.isfile(archive_path):
+            return False
+
+        # Extract archive name and folder name
+        file_name = os.path.basename(archive_path)
+        folder_name = os.path.splitext(file_name)[0]
+
+        # Define paths
+        remote_tmp_path = f"/tmp/{file_name}"
+        releases_path = f"/data/web_static/releases/{folder_name}"
+        current_path = "/data/web_static/current"
+
+        # Add debug statements to check each step
+        print(f"Uploading archive: {archive_path}")
+
+        # Upload the archive to the remote server
+        if put(archive_path, remote_tmp_path).failed:
+            print("Failed to upload archive")
+            return False
+        print("Archive uploaded successfully")
+
+        # Use sudo for mkdir command
+        if run(f"sudo mkdir -p {releases_path}").failed:
+            print("Failed to create release directory")
+            return False
+
+        # Extract the archive into the new release directory
+        if run(f"tar -xzf {remote_tmp_path} -C {releases_path}").failed:
+            print("Failed to extract archive")
+            return False
+
+        # Remove the uploaded archive from /tmp
+        if run(f"rm {remote_tmp_path}").failed:
+            print("Failed to remove uploaded archive")
+            return False
+
+        # Move the contents of the release directory to current (forcefully)
+        if run(f"mv -f {releases_path}/web_static/* {releases_path}").failed:
+            print("Failed to move contents to current")
+            return False
+
+        # Remove the now empty web_static folder
+        if run(f"rm -rf {releases_path}/web_static").failed:
+            print("Failed to remove web_static folder")
+            return False
+
+        # Update the symbolic link
+        if run(f"rm -rf {current_path} && ln -s {releases_path} {current_path}").failed:
+            print("Failed to update symbolic link")
+            return False
+
+        return True
+    except Exception as e:
+        print(f"An error occurred: {e}")
         return False
-
-    # Extract archive name and folder name
-    file_name = os.path.basename(archive_path)
-    folder_name = os.path.splitext(file_name)[0]
-
-    # Define paths
-    remote_tmp_path = f"/tmp/{file_name}"
-    releases_path = f"/data/web_static/releases/{folder_name}"
-    current_path = "/data/web_static/current"
-
-    # Add debug statements to check each step
-    print(f"Uploading archive: {archive_path}")
-    if put(archive_path, remote_tmp_path).failed:
-        print("Failed to upload archive")
-        return False
-    print("Archive uploaded successfully")
-
-    # Upload the archive to the remote server
-    if put(archive_path, remote_tmp_path).failed:
-        return False
-
-    # Use sudo for mkdir command
-    if run(f"sudo mkdir -p {releases_path}").failed:
-        return False
-
-    # Extract the archive into the new release directory
-    if run(f"tar -xzf {remote_tmp_path} -C {releases_path}").failed:
-        return False
-
-    # Remove the uploaded archive from /tmp
-    if run(f"rm {remote_tmp_path}").failed:
-        return False
-
-    # Move the contents of the release directory to current (forcefully)
-    if run(f"mv -f {releases_path}/web_static/* {releases_path}").failed:
-        return False
-
-    # Remove the now empty web_static folder
-    if run(f"rm -rf {releases_path}/web_static").failed:
-        return False
-
-    # Update the symbolic link
-    if run(f"rm -rf {current_path} && ln -s {releases_path} {current_path}").failed:
-        return False
-
-    return True
 
 
 def do_deploy(archive_path):
