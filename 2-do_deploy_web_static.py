@@ -40,7 +40,7 @@ def deploy_archive(archive_path):
         return False
 
     # Create a new release directory
-    if run(f"mkdir -p {releases_path}").failed:
+    if run(f"sudo mkdir -p {releases_path}").failed:
         return False
 
     # Extract the archive into the new release directory
