@@ -23,7 +23,6 @@ def deploy_archive(archive_path):
     folder_name = os.path.splitext(file_name)[0]
 
     # Define paths
-    # Moved this line after defining file_name
     remote_tmp_path = f"/tmp/{file_name}"
     releases_path = f"/data/web_static/releases/{folder_name}"
     current_path = "/data/web_static/current"
@@ -39,7 +38,7 @@ def deploy_archive(archive_path):
     if put(archive_path, remote_tmp_path).failed:
         return False
 
-    # Create a new release directory
+    # Use sudo for mkdir command
     if run(f"sudo mkdir -p {releases_path}").failed:
         return False
 
@@ -51,8 +50,8 @@ def deploy_archive(archive_path):
     if run(f"rm {remote_tmp_path}").failed:
         return False
 
-    # Move the contents of the release directory to current
-    if run(f"mv {releases_path}/web_static/* {releases_path}").failed:
+    # Move the contents of the release directory to current (forcefully)
+    if run(f"mv -f {releases_path}/web_static/* {releases_path}").failed:
         return False
 
     # Remove the now empty web_static folder
