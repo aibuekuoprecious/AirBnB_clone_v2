@@ -52,15 +52,17 @@ def deploy_archive(archive_path):
             print("Failed to remove uploaded archive")
             return False
 
-        # Move the contents of the release directory to current (forcefully)
-        if run(f"mv -f {releases_path}/web_static/* {releases_path}").failed:
-            print("Failed to move contents to current")
-            return False
+        # Check if destination directory is empty
+        if run(f"test -d {releases_path}/web_static").succeeded:
+            # Move the contents of the release directory to current (forcefully)
+            if run(f"mv -f {releases_path}/web_static/* {releases_path}").failed:
+                print("Failed to move contents to current")
+                return False
 
-        # Remove the now empty web_static folder
-        if run(f"rm -rf {releases_path}/web_static").failed:
-            print("Failed to remove web_static folder")
-            return False
+            # Remove the now empty web_static folder
+            if run(f"rm -rf {releases_path}/web_static").failed:
+                print("Failed to remove web_static folder")
+                return False
 
         # Update the symbolic link
         if run(f"rm -rf {current_path} && ln -s {releases_path} {current_path}").failed:
