@@ -7,11 +7,9 @@ env.hosts = ["34.224.63.159", "3.85.177.105"]
 env.user = "ubuntu"  # Set the SSH username
 env.key_filename = "~/.ssh/school"  # Set the path to your SSH private key
 
-
 def file_exists(path):
     """Check if a file exists on the remote server."""
     return run(f"test -e {path}", warn_only=True).succeeded
-
 
 def deploy_archive(archive_path):
     """Distribute an archive to a web server."""
@@ -54,14 +52,19 @@ def deploy_archive(archive_path):
 
         # Check if destination directory is empty
         if run(f"test -d {releases_path}/web_static").succeeded:
-            # Move the contents of the release directory to current (forcefully)
-            if run(f"mv -f {releases_path}/web_static/* {releases_path}").failed:
+            # Backup the existing contents before moving
+            if run(f"mv -f {releases_path}/web_static/* {releases_path}_backup").failed:
+                print("Failed to create a backup of existing contents")
+                return False
+
+            # Modify the move command to handle the backup
+            if run(f"mv -f {releases_path}_backup/* {releases_path}").failed:
                 print("Failed to move contents to current")
                 return False
 
-            # Remove the now empty web_static folder
-            if run(f"rm -rf {releases_path}/web_static").failed:
-                print("Failed to remove web_static folder")
+            # Remove the now empty web_static folder backup
+            if run(f"rm -rf {releases_path}_backup").failed:
+                print("Failed to remove web_static folder backup")
                 return False
 
         # Update the symbolic link
@@ -73,7 +76,6 @@ def deploy_archive(archive_path):
     except Exception as e:
         print(f"An error occurred: {e}")
         return False
-
 
 def do_deploy(archive_path):
     """Distribute an archive to a web server and return success status."""
