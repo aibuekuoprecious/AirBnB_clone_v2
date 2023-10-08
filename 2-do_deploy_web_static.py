@@ -1,82 +1,57 @@
 #!/usr/bin/python3
-# Fabfile to distribute an archive to a web server.
+"""Fabric script that distributes an archive to web servers"""
+
+from fabric.api import *
 import os
-from fabric.api import env, put, run
 
+# Define the list of host IP addresses
 env.hosts = ["34.224.63.159", "3.85.177.105"]
-env.user = "ubuntu"  # Set the SSH username
-env.key_filename = "~/.ssh/school"  # Set the path to your SSH private key
 
-def file_exists(path):
-    """Check if a file exists on the remote server."""
-    return run(f"test -e {path}", warn_only=True).succeeded
-
-def deploy_archive(archive_path):
-    """Distribute an archive to a web server."""
-    try:
-        if not os.path.isfile(archive_path):
-            return False
-
-        # Extract archive name and folder name
-        file_name = os.path.basename(archive_path)
-        folder_name = os.path.splitext(file_name)[0]
-
-        # Define paths
-        remote_tmp_path = f"/tmp/{file_name}"
-        releases_path = f"/data/web_static/releases/{folder_name}"
-        current_path = "/data/web_static/current"
-
-        # Add debug statements to check each step
-        print(f"Uploading archive: {archive_path}")
-
-        # Upload the archive to the remote server
-        if put(archive_path, remote_tmp_path).failed:
-            print("Failed to upload archive")
-            return False
-        print("Archive uploaded successfully")
-
-        # Use sudo for mkdir command
-        if run(f"sudo mkdir -p {releases_path}").failed:
-            print("Failed to create release directory")
-            return False
-
-        # Extract the archive into the new release directory
-        if run(f"tar -xzf {remote_tmp_path} -C {releases_path}").failed:
-            print("Failed to extract archive")
-            return False
-
-        # Remove the uploaded archive from /tmp
-        if run(f"rm {remote_tmp_path}").failed:
-            print("Failed to remove uploaded archive")
-            return False
-
-        # Check if destination directory is empty
-        if run(f"test -d {releases_path}/web_static").succeeded:
-            # Backup the existing contents before moving
-            if run(f"mv -f {releases_path}/web_static/* {releases_path}_backup").failed:
-                print("Failed to create a backup of existing contents")
-                return False
-
-            # Modify the move command to handle the backup
-            if run(f"mv -f {releases_path}_backup/* {releases_path}").failed:
-                print("Failed to move contents to current")
-                return False
-
-            # Remove the now empty web_static folder backup
-            if run(f"rm -rf {releases_path}_backup").failed:
-                print("Failed to remove web_static folder backup")
-                return False
-
-        # Update the symbolic link
-        if run(f"rm -rf {current_path} && ln -s {releases_path} {current_path}").failed:
-            print("Failed to update symbolic link")
-            return False
-
-        return True
-    except Exception as e:
-        print(f"An error occurred: {e}")
-        return False
 
 def do_deploy(archive_path):
-    """Distribute an archive to a web server and return success status."""
-    return deploy_archive(archive_path)
+    """Deploy the archive to the web servers"""
+    try:
+        # Check if the archive file exists
+        if os.path.exists(archive_path):
+            # Extract the archive filename without extension
+            archive_filename = os.path.basename(archive_path)
+            archive_name = os.path.splitext(archive_filename)[0]
+
+            # Define target paths on the remote server
+            remote_tmp_path = "/tmp/{}".format(archive_filename)
+            remote_release_path = "/data/web_static/releases/{}".format(
+                archive_name)
+
+            # Upload the archive to the server
+            put(archive_path, remote_tmp_path)
+
+            # Create necessary directories on the remote server
+            run('mkdir -p {}'.format(remote_release_path))
+
+            # Extract the archive to the release directory
+            run('tar -xzf {} -C {}'.format(remote_tmp_path, remote_release_path))
+
+            # Delete the temporary archive file
+            run('rm {}'.format(remote_tmp_path))
+
+            # Move the contents of web_static to the release directory
+            run('mv {}/web_static/* {}'.format(remote_release_path, remote_release_path))
+
+            # Remove the web_static directory within the release directory
+            run('rm -rf {}/web_static'.format(remote_release_path))
+
+            # Update the symbolic link to the new release
+            run('rm -rf /data/web_static/current')
+            run('ln -s {} /data/web_static/current'.format(remote_release_path))
+
+            # Restart the nginx service
+            sudo('service nginx restart')
+
+            print("New version deployed successfully.")
+            return True
+        else:
+            print('File does not exist')
+            return False
+    except Exception as err:
+        print('Error:', err)
+        return False
