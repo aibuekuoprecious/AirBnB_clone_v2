@@ -35,10 +35,8 @@ def do_deploy(archive_path):
             run('rm {}'.format(remote_tmp_path))
 
             # Move the contents of web_static to the release directory
-            run('mv {}/web_static/* {}'.format(remote_release_path, remote_release_path))
-
-            # Remove the web_static directory within the release directory
-            run('rm -rf {}/web_static'.format(remote_release_path))
+            run('rsync -av --exclude={}/web_static/images --exclude={}/web_static/styles {}/web_static/* {}/'.format(
+                remote_release_path, remote_release_path, remote_release_path, remote_release_path))
 
             # Update the symbolic link to the new release
             run('rm -rf /data/web_static/current')
